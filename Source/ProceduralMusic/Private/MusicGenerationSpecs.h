@@ -36,17 +36,17 @@ struct FMusicGenerationSpecs
     GENERATED_USTRUCT_BODY()
     
 public:
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     bool bGenerateIntro  { true };
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     bool bGenerateOutro  { false };
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     bool bGenerateBridge { false };
 
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     Genre Genre { Genre::DrumAndBass };
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     MusicSpeed Speed { MusicSpeed::Medium };
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     MusicEnergy Energy { MusicEnergy::Low };
 };
