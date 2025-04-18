@@ -225,9 +225,47 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
 
     float PreviousNote ( 0.f );
 
+    TArray<ENoteOption> GenericPattern;
+    TArray<ENoteOption> MarkovPattern;
+
+    GenericPattern.SetNum(BassNotes.Num());
+    MarkovPattern.SetNum (BassNotes.Num());
+
     for (size_t i = 0; i < BassNotes.Num(); i++)
     {
-        switch (GenerateBassNoteProbabilities(a_Seed, a_Specs))
+        GenericPattern[i] = GenerateBassNoteProbabilities(a_Seed, a_Specs);
+    }
+
+    for (size_t i = 0; i < BassNotes.Num(); i++)
+    {
+        MarkovPattern[i] = GenerateMarkovBassNoteProbabilities(ENoteOption::Break, a_Seed, a_Specs);
+    }
+    
+    TArray<ENoteOption> FinalPattern;
+    FinalPattern.SetNum(MarkovPattern.Num());
+
+    for (size_t i = 0; i < MarkovPattern.Num(); i++)
+    {
+        if (GenericPattern[i] == MarkovPattern[i])
+        {
+            FinalPattern[i] = MarkovPattern[i];
+        }
+        else 
+        {
+            if (FinalPattern.IsValidIndex(i - 1) == false)
+            {
+                FinalPattern[i] = ENoteOption::NewNote;
+            }
+            else
+            {
+                FinalPattern[i] = GenerateMarkovBassNoteProbabilities(FinalPattern[i - 1], a_Seed, a_Specs);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < FinalPattern.Num(); i++)
+    {
+        switch (FinalPattern[i])
         {
             case ENoteOption::NewNote:
             {
@@ -254,6 +292,7 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
             }
         }
     }
+    
     
     m_Pattern.BassNotes = BassNotes;
 }
@@ -322,6 +361,40 @@ ENoteOption UDrumAndBassGenerator::GenerateBassNoteProbabilities(const FRandomSt
     }
     
     UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateBassNoteProbabilities! Weights set up wrong!"));
+
+    return ENoteOption::Break;
+}
+
+ENoteOption UDrumAndBassGenerator::GenerateMarkovBassNoteProbabilities(ENoteOption a_PreviousOption, const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
+{
+    TMap<ENoteOption, TArray<FMarkovRhythmChain>> MarkovRhythm
+    {
+        { ENoteOption::NewNote, { { ENoteOption::NewNote, 0.1f }, { ENoteOption::Sustain, 0.8f }, { ENoteOption::Break, 0.1f } } },
+        { ENoteOption::Sustain, { { ENoteOption::NewNote, 0.5f }, { ENoteOption::Sustain, 0.4f }, { ENoteOption::Break, 0.1f } } },
+        { ENoteOption::Break,   { { ENoteOption::NewNote, 0.8f }, { ENoteOption::Sustain, 0.f  }, { ENoteOption::Break, 0.2f } } }
+    };
+
+    float RandomWeight = a_Seed.FRand();
+    float Weight ( 0.f );
+
+    TArray<FMarkovRhythmChain>* Probabilities = MarkovRhythm.Find(a_PreviousOption);
+
+    if (Probabilities == nullptr)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateMarkovBassNoteProbabilities! Could not find previous option in the Markov Chain! PreviousOption: %i"), a_PreviousOption);
+
+        return ENoteOption::Break;
+    }
+    
+    for (FMarkovRhythmChain& Probability : *Probabilities)
+    {
+        Weight += Probability.Probability;
+
+        if (RandomWeight <= Weight)
+        {
+            return Probability.NoteOption;
+        }
+    }
 
     return ENoteOption::Break;
 }
@@ -407,7 +480,16 @@ FMusicNote UDrumAndBassGenerator::GenerateBassMidiNote(float a_PreviousNote, con
                     //      it should be tested if lowering by an octave is better
                     while (ScaleNotes.Find(BassNote) == INDEX_NONE)
                     {
-                        BassNote -= 1.f;
+                        // BassNote -= 1.f;
+
+                        if (BassNote > a_RootNote && BassNote <= ScaleNotes [ScaleNotes.Num() - 1])
+                        {
+                            BassNote -= 1.f;
+                        }
+                        else
+                        {
+                            BassNote -= 12.f;
+                        }
                     }
                     return FMusicNote( BassNote, 127.f );
                 }

@@ -56,6 +56,18 @@ struct FMarkovChain
 };
 
 USTRUCT(BlueprintType)
+struct FMarkovRhythmChain
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ENoteOption NoteOption;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Probability;
+};
+
+USTRUCT(BlueprintType)
 struct FChordArrays
 {
 	GENERATED_USTRUCT_BODY()
@@ -153,6 +165,7 @@ private:
 
 	void GenerateBass(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	ENoteOption GenerateBassNoteProbabilities(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
+	ENoteOption GenerateMarkovBassNoteProbabilities(ENoteOption a_PreviousOption, const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	FMusicNote GenerateBassMidiNote(float a_PreviousNote, const FRandomStream& a_Seed, float a_RootNote, FName a_Scale);
 
 	/**
