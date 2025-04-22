@@ -684,7 +684,7 @@ FChordArrays UDrumAndBassGenerator::TranscodeChords(TArray<TArray<FMusicNote>> a
         EleventhNotes[i]   = a_ChordArray[i][5];
         ThirteenthNotes[i] = a_ChordArray[i][6];
     }
-    return FChordArrays(RootNotes, ThirdNotes, FifthNotes, SeventhNotes, NinthNotes, EleventhNotes,ThirteenthNotes);
+    return FChordArrays(RootNotes, ThirdNotes, FifthNotes, SeventhNotes, NinthNotes, EleventhNotes, ThirteenthNotes);
 }
 
 void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
