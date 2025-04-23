@@ -238,7 +238,14 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
 
     for (size_t i = 0; i < BassNotes.Num(); i++)
     {
-        MarkovPattern[i] = GenerateMarkovBassNoteProbabilities(ENoteOption::Break, a_Seed, a_Specs);
+        if (BassNotes.IsValidIndex(i - 1))
+        {
+            MarkovPattern[i] = GenerateMarkovBassNoteProbabilities(MarkovPattern[i - 1], a_Seed, a_Specs);
+        }
+        else 
+        {
+            MarkovPattern[i] = GenerateMarkovBassNoteProbabilities(ENoteOption::Break, a_Seed, a_Specs);
+        }
     }
     
     TArray<ENoteOption> FinalPattern;
@@ -252,13 +259,13 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
         }
         else 
         {
-            if (FinalPattern.IsValidIndex(i - 1) == false)
+            if (FinalPattern.IsValidIndex(i - 1))
             {
-                FinalPattern[i] = ENoteOption::NewNote;
+                FinalPattern[i] = GenerateMarkovBassNoteProbabilities(FinalPattern[i - 1], a_Seed, a_Specs);
             }
             else
             {
-                FinalPattern[i] = GenerateMarkovBassNoteProbabilities(FinalPattern[i - 1], a_Seed, a_Specs);
+                FinalPattern[i] = ENoteOption::NewNote;
             }
         }
     }
@@ -482,7 +489,7 @@ FMusicNote UDrumAndBassGenerator::GenerateBassMidiNote(float a_PreviousNote, con
                     {
                         // BassNote -= 1.f;
 
-                        if (BassNote > a_RootNote && BassNote <= ScaleNotes [ScaleNotes.Num() - 1])
+                        if (BassNote > a_RootNote && BassNote <= ScaleNotes[ScaleNotes.Num() - 1])
                         {
                             BassNote -= 1.f;
                         }
@@ -711,9 +718,54 @@ void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FM
 
     float PreviousNote ( 0.f );
 
+    TArray<ENoteOption> GenericPattern;
+    TArray<ENoteOption> MarkovPattern;
+
+    GenericPattern.SetNum(MelodyNotes.Num());
+    MarkovPattern.SetNum (MelodyNotes.Num());
+
     for (size_t i = 0; i < MelodyNotes.Num(); i++)
     {
-        switch (GenerateMelodyProbabilities(a_Seed, a_Specs))
+        GenericPattern[i] = GenerateMelodyProbabilities(a_Seed, a_Specs);
+    }
+
+    for (size_t i = 0; i < MelodyNotes.Num(); i++)
+    {
+        if (MelodyNotes.IsValidIndex(i - 1))
+        {
+            MarkovPattern[i] = GenerateMarkovMelodyProbabilities(MarkovPattern[i - 1], a_Seed, a_Specs);
+        }
+        else
+        {
+            MarkovPattern[i] = GenerateMarkovMelodyProbabilities(ENoteOption::Break, a_Seed, a_Specs);
+        }
+    }
+    
+    TArray<ENoteOption> FinalPattern;
+    FinalPattern.SetNum(MarkovPattern.Num());
+
+    for (size_t i = 0; i < MarkovPattern.Num(); i++)
+    {
+        if (GenericPattern[i] == MarkovPattern[i])
+        {
+            FinalPattern[i] = MarkovPattern[i];
+        }
+        else
+        {
+            if (FinalPattern.IsValidIndex(i - 1))
+            {
+                FinalPattern[i] = GenerateMarkovBassNoteProbabilities(FinalPattern[i - 1], a_Seed, a_Specs);
+            }
+            else
+            {
+                FinalPattern[i] = ENoteOption::NewNote;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < FinalPattern.Num(); i++)
+    {
+        switch (FinalPattern[i])
         {
             case ENoteOption::NewNote:
             {
@@ -812,6 +864,40 @@ ENoteOption UDrumAndBassGenerator::GenerateMelodyProbabilities(const FRandomStre
     return ENoteOption::Break;
 }
 
+ENoteOption UDrumAndBassGenerator::GenerateMarkovMelodyProbabilities(ENoteOption a_PreviousOption, const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
+{
+    TMap<ENoteOption, TArray<FMarkovRhythmChain>> MarkovRhythm
+    {
+        { ENoteOption::NewNote, { { ENoteOption::NewNote, 0.1f }, { ENoteOption::Sustain, 0.8f }, { ENoteOption::Break, 0.1f } } },
+        { ENoteOption::Sustain, { { ENoteOption::NewNote, 0.5f }, { ENoteOption::Sustain, 0.4f }, { ENoteOption::Break, 0.1f } } },
+        { ENoteOption::Break,   { { ENoteOption::NewNote, 0.8f }, { ENoteOption::Sustain, 0.f  }, { ENoteOption::Break, 0.2f } } }
+    };
+
+    float RandomWeight = a_Seed.FRand();
+    float Weight ( 0.f );
+
+    TArray<FMarkovRhythmChain>* Probabilities = MarkovRhythm.Find(a_PreviousOption);
+
+    if (Probabilities == nullptr)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateMarkovMelodyProbabilities! Could not find previous option in the Markov Chain! PreviousOption: %i"), a_PreviousOption);
+
+        return ENoteOption::Break;
+    }
+    
+    for (FMarkovRhythmChain& Probability : *Probabilities)
+    {
+        Weight += Probability.Probability;
+
+        if (RandomWeight <= Weight)
+        {
+            return Probability.NoteOption;
+        }
+    }
+
+    return ENoteOption::Break;
+}
+
 FMusicNote UDrumAndBassGenerator::GenerateMelodyMidiNote(float a_PreviousNote, const FRandomStream &a_Seed, float a_RootNote, FName a_Scale)
 {
     if (a_PreviousNote <= 0.f)
@@ -893,16 +979,16 @@ FMusicNote UDrumAndBassGenerator::GenerateMelodyMidiNote(float a_PreviousNote, c
                     //      it should be tested if lowering by an octave is better
                     while (ScaleNotes.Find(MelodyNote) == INDEX_NONE)
                     {
-                        MelodyNote -= 1.f;
+                        // MelodyNote -= 1.f;
 
-                        /** Transposing by an octave
-                         * 
-                         * if (MelodyNote > a_RootNote && MelodyNote <= ScaleNotes [ScaleNotes.Num() - 1])
-                         * {
-                         *      MelodyNote -= 1.f;
-                         * }
-                         * MelodyNote -= 12.f;
-                         */
+                        if (MelodyNote > a_RootNote && MelodyNote <= ScaleNotes[ScaleNotes.Num() - 1])
+                        {
+                            MelodyNote -= 1.f;
+                        }
+                        else
+                        {
+                            MelodyNote -= 12.f;
+                        }
                     }
                     return FMusicNote( MelodyNote, 127.f );
                 }
