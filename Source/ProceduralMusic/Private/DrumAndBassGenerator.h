@@ -18,8 +18,7 @@ UENUM(BlueprintType)
 enum class ENoteOption : uint8
 {
 	NewNote UMETA(DisplayName="New Note"),
-	Sustain UMETA(DisplayName="Sustain"),
-	Break UMETA(DisplayName="Break")
+	Sustain UMETA(DisplayName="Sustain")
 };
 
 USTRUCT(BlueprintType)
@@ -164,9 +163,12 @@ private:
 	 */
 
 	void GenerateBass(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
+	int32 GenerateBassNoteAmount(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	ENoteOption GenerateBassNoteProbabilities(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	ENoteOption GenerateMarkovBassNoteProbabilities(ENoteOption a_PreviousOption, const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	FMusicNote GenerateBassMidiNote(float a_PreviousNote, const FRandomStream& a_Seed, float a_RootNote, FName a_Scale);
+	TArray<FMusicNote> CheckGeneration(int32 a_NoteAmount, TArray<FMusicNote> a_NotesToCheck, const FMusicGenerationSpecs& a_Specs);
+	int32 CheckNoteAmount(TArray<FMusicNote> a_NoteArray);
 
 	/**
 	 * Functions for Chord Generation

@@ -223,6 +223,10 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
         {0.f, 0.f}
     };
 
+    int32 BassNoteAmount = GenerateBassNoteAmount(a_Seed, a_Specs);
+
+    UE_LOG(LogTemp, Display, TEXT("BassNoteAmount: %i"), BassNoteAmount);
+
     float PreviousNote ( 0.f );
 
     TArray<ENoteOption> GenericPattern;
@@ -244,7 +248,7 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
         }
         else 
         {
-            MarkovPattern[i] = GenerateMarkovBassNoteProbabilities(ENoteOption::Break, a_Seed, a_Specs);
+            MarkovPattern[i] = ENoteOption::NewNote;
         }
     }
     
@@ -293,51 +297,62 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
                 }
                 break;
             }
-            case ENoteOption::Break:
-            {
-                BassNotes[i] = FMusicNote { 0.f, 0.f };
-            }
         }
     }
     
+    for (size_t i = 0; i < BassNotes.Num(); i++)
+    {
+        UE_LOG(LogTemp, Display, TEXT("BassNoteB4: %f, BassNoteVelocityB4: %f"), BassNotes[i].MidiNote, BassNotes[i].Velocity);
+    }
     
-    m_Pattern.BassNotes = BassNotes;
+    m_Pattern.BassNotes = CheckGeneration(BassNoteAmount, BassNotes, a_Specs);
+}
+
+int32 UDrumAndBassGenerator::GenerateBassNoteAmount(const FRandomStream &a_Seed, const FMusicGenerationSpecs& a_Specs)
+{
+    switch (a_Specs.Energy)
+    {
+    case MusicEnergy::Low:
+        return a_Seed.RandRange(4, 5);
+    case MusicEnergy::Medium:
+        return a_Seed.RandRange(5, 6);
+    case MusicEnergy::High:
+        return a_Seed.RandRange(5, 7);
+
+    default:
+        return 4;
+    }
 }
 
 ENoteOption UDrumAndBassGenerator::GenerateBassNoteProbabilities(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs)
 {
     float SustainProbability ( 0.f );
     float NewNoteProbability ( 0.f );
-    float BreakProbability   ( 0.f );
 
     switch (a_Specs.Energy)
     {
         case MusicEnergy::Low:
         {
             SustainProbability = 0.6f;
-            NewNoteProbability = 0.3f;
-            BreakProbability   = 0.1f;
+            NewNoteProbability = 0.4f;
             break;
         }
         case MusicEnergy::Medium:
         {
             SustainProbability = 0.5f;
-            NewNoteProbability = 0.4f;
-            BreakProbability   = 0.1f;
+            NewNoteProbability = 0.5f;
             break;
         }
         case MusicEnergy::High:
         {
             SustainProbability = 0.4f;
-            NewNoteProbability = 0.3f;
-            BreakProbability   = 0.2f;
+            NewNoteProbability = 0.6f;
             break;
         }
         default:
         {
             SustainProbability = 0.6f;
-            NewNoteProbability = 0.3f;
-            BreakProbability   = 0.1f;
+            NewNoteProbability = 0.4f;
             break;
         }
     }
@@ -359,26 +374,18 @@ ENoteOption UDrumAndBassGenerator::GenerateBassNoteProbabilities(const FRandomSt
     {
         return ENoteOption::NewNote;
     }
-
-    Weight += BreakProbability;
-
-    if (RandomChance <= Weight)
-    {
-        return ENoteOption::Break;
-    }
     
     UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateBassNoteProbabilities! Weights set up wrong!"));
 
-    return ENoteOption::Break;
+    return ENoteOption::NewNote;
 }
 
 ENoteOption UDrumAndBassGenerator::GenerateMarkovBassNoteProbabilities(ENoteOption a_PreviousOption, const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
 {
     TMap<ENoteOption, TArray<FMarkovRhythmChain>> MarkovRhythm
     {
-        { ENoteOption::NewNote, { { ENoteOption::NewNote, 0.1f }, { ENoteOption::Sustain, 0.8f }, { ENoteOption::Break, 0.1f } } },
-        { ENoteOption::Sustain, { { ENoteOption::NewNote, 0.5f }, { ENoteOption::Sustain, 0.4f }, { ENoteOption::Break, 0.1f } } },
-        { ENoteOption::Break,   { { ENoteOption::NewNote, 0.8f }, { ENoteOption::Sustain, 0.f  }, { ENoteOption::Break, 0.2f } } }
+        { ENoteOption::NewNote, { { ENoteOption::NewNote, 0.2f }, { ENoteOption::Sustain, 0.8f } } },
+        { ENoteOption::Sustain, { { ENoteOption::NewNote, 0.6f }, { ENoteOption::Sustain, 0.4f } } }
     };
 
     float RandomWeight = a_Seed.FRand();
@@ -390,7 +397,7 @@ ENoteOption UDrumAndBassGenerator::GenerateMarkovBassNoteProbabilities(ENoteOpti
     {
         UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateMarkovBassNoteProbabilities! Could not find previous option in the Markov Chain! PreviousOption: %i"), a_PreviousOption);
 
-        return ENoteOption::Break;
+        return ENoteOption::NewNote;
     }
     
     for (FMarkovRhythmChain& Probability : *Probabilities)
@@ -403,7 +410,7 @@ ENoteOption UDrumAndBassGenerator::GenerateMarkovBassNoteProbabilities(ENoteOpti
         }
     }
 
-    return ENoteOption::Break;
+    return ENoteOption::NewNote;
 }
 
 FMusicNote UDrumAndBassGenerator::GenerateBassMidiNote(float a_PreviousNote, const FRandomStream &a_Seed, float a_RootNote, FName a_Scale)
@@ -507,6 +514,105 @@ FMusicNote UDrumAndBassGenerator::GenerateBassMidiNote(float a_PreviousNote, con
     //Shouldn't execute
     UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateBassMidiNote! Reached end of function!"));
     return FMusicNote( 0.f, 0.f );
+}
+
+TArray<FMusicNote> UDrumAndBassGenerator::CheckGeneration(int32 a_NoteAmount, TArray<FMusicNote> a_NotesToCheck, const FMusicGenerationSpecs& a_Specs)
+{
+    int32 NoteAmount = CheckNoteAmount(a_NotesToCheck);
+    
+    UE_LOG(LogTemp, Display, TEXT("NoteAmount: %i"), NoteAmount);
+
+    if (NoteAmount == a_NoteAmount)
+    {
+        return a_NotesToCheck;
+    }
+    
+    TArray<FMusicNote> FinalNotes = a_NotesToCheck;
+
+    int32 Failsafe = 0;
+    
+    while (CheckNoteAmount(FinalNotes) > a_NoteAmount)
+    {
+        Failsafe++;
+
+        if (Failsafe > 20)
+        {
+            UE_LOG(LogTemp, Error, TEXT("While Loop exceeded 20 revisions!"));
+            break;
+        }
+
+        TArray<int32> GroupStarts;
+        GroupStarts.Add(0);
+
+        for (size_t i = 1; i < FinalNotes.Num(); i++)
+        {
+            if (FinalNotes[i].MidiNote != FinalNotes[i - 1].MidiNote)
+            {
+                GroupStarts.Add(i);
+            }
+            
+        }
+        
+        int32 ShortestGroupStart = GroupStarts[0];
+        int32 ShortestGroupLength = FinalNotes.Num();
+
+        for (size_t i = 0; i < GroupStarts.Num(); i++)
+        {
+            int32 Start = GroupStarts[i];
+            int32 End = (i + 1 < GroupStarts.Num()) ? GroupStarts[i + 1] : FinalNotes.Num();
+            int32 Length = End - Start;
+
+            if (Length < ShortestGroupLength)
+            {
+                ShortestGroupStart = Start;
+                ShortestGroupLength = Length;
+            }
+            
+        }
+        
+        int32 GroupStart = ShortestGroupStart;
+        int32 GroupEnd = GroupStart + ShortestGroupLength;
+
+        if (GroupStart > 0)
+        {
+            FMusicNote PreviousNote = FinalNotes[GroupStart - 1];
+            for (size_t i = GroupStart; i < GroupEnd; i++)
+            {
+                FinalNotes[i] = PreviousNote;
+            }
+            
+        }
+        else if (GroupEnd < FinalNotes.Num())
+        {
+            FMusicNote NextNote = FinalNotes[GroupEnd];
+            for (size_t i = GroupStart; i < GroupEnd; i++)
+            {
+                FinalNotes[i] = NextNote;
+            }
+            
+        }
+    }
+    return FinalNotes;
+}
+
+int32 UDrumAndBassGenerator::CheckNoteAmount(TArray<FMusicNote> a_NoteArray)
+{
+    if (a_NoteArray.Num() == 0)
+    {
+        return 0;
+    }
+    
+    int32 NoteAmount = 1;
+
+    for (size_t i = 1; i < a_NoteArray.Num(); i++)
+    {
+        if (a_NoteArray[i].MidiNote != a_NoteArray[i - 1].MidiNote)
+        {
+            NoteAmount++;
+        }
+    }
+
+    return NoteAmount;
 }
 
 void UDrumAndBassGenerator::GenerateChords(const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
@@ -737,7 +843,7 @@ void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FM
         }
         else
         {
-            MarkovPattern[i] = GenerateMarkovMelodyProbabilities(ENoteOption::Break, a_Seed, a_Specs);
+            MarkovPattern[i] = GenerateMarkovMelodyProbabilities(ENoteOption::NewNote, a_Seed, a_Specs);
         }
     }
     
@@ -786,10 +892,6 @@ void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FM
                 }
                 break;
             }
-            case ENoteOption::Break:
-            {
-                MelodyNotes[i] = FMusicNote { 0.f, 0.f };
-            }
         }
     }
     
@@ -800,36 +902,31 @@ ENoteOption UDrumAndBassGenerator::GenerateMelodyProbabilities(const FRandomStre
 {
     float SustainProbability ( 0.f );
     float NewNoteProbability ( 0.f );
-    float BreakProbability   ( 0.f );
 
     switch (a_Specs.Energy)
     {
         case MusicEnergy::Low:
         {
             SustainProbability = 0.6f;
-            NewNoteProbability = 0.3f;
-            BreakProbability   = 0.1f;
+            NewNoteProbability = 0.4f;
             break;
         }
         case MusicEnergy::Medium:
         {
             SustainProbability = 0.5f;
-            NewNoteProbability = 0.4f;
-            BreakProbability   = 0.1f;
+            NewNoteProbability = 0.5f;
             break;
         }
         case MusicEnergy::High:
         {
             SustainProbability = 0.4f;
-            NewNoteProbability = 0.3f;
-            BreakProbability   = 0.2f;
+            NewNoteProbability = 0.6f;
             break;
         }
         default:
         {
             SustainProbability = 0.6f;
-            NewNoteProbability = 0.3f;
-            BreakProbability   = 0.1f;
+            NewNoteProbability = 0.4f;
             break;
         }
     }
@@ -851,26 +948,18 @@ ENoteOption UDrumAndBassGenerator::GenerateMelodyProbabilities(const FRandomStre
     {
         return ENoteOption::NewNote;
     }
-
-    Weight += BreakProbability;
-
-    if (RandomChance <= Weight)
-    {
-        return ENoteOption::Break;
-    }
     
     UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateMelodyProbabilities! Weights set up wrong!"));
 
-    return ENoteOption::Break;
+    return ENoteOption::NewNote;
 }
 
 ENoteOption UDrumAndBassGenerator::GenerateMarkovMelodyProbabilities(ENoteOption a_PreviousOption, const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
 {
     TMap<ENoteOption, TArray<FMarkovRhythmChain>> MarkovRhythm
     {
-        { ENoteOption::NewNote, { { ENoteOption::NewNote, 0.1f }, { ENoteOption::Sustain, 0.8f }, { ENoteOption::Break, 0.1f } } },
-        { ENoteOption::Sustain, { { ENoteOption::NewNote, 0.5f }, { ENoteOption::Sustain, 0.4f }, { ENoteOption::Break, 0.1f } } },
-        { ENoteOption::Break,   { { ENoteOption::NewNote, 0.8f }, { ENoteOption::Sustain, 0.f  }, { ENoteOption::Break, 0.2f } } }
+        { ENoteOption::NewNote, { { ENoteOption::NewNote, 0.1f }, { ENoteOption::Sustain, 0.8f } } },
+        { ENoteOption::Sustain, { { ENoteOption::NewNote, 0.5f }, { ENoteOption::Sustain, 0.4f } } }
     };
 
     float RandomWeight = a_Seed.FRand();
@@ -882,7 +971,7 @@ ENoteOption UDrumAndBassGenerator::GenerateMarkovMelodyProbabilities(ENoteOption
     {
         UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateMarkovMelodyProbabilities! Could not find previous option in the Markov Chain! PreviousOption: %i"), a_PreviousOption);
 
-        return ENoteOption::Break;
+        return ENoteOption::NewNote;
     }
     
     for (FMarkovRhythmChain& Probability : *Probabilities)
@@ -895,7 +984,7 @@ ENoteOption UDrumAndBassGenerator::GenerateMarkovMelodyProbabilities(ENoteOption
         }
     }
 
-    return ENoteOption::Break;
+    return ENoteOption::NewNote;
 }
 
 FMusicNote UDrumAndBassGenerator::GenerateMelodyMidiNote(float a_PreviousNote, const FRandomStream &a_Seed, float a_RootNote, FName a_Scale)

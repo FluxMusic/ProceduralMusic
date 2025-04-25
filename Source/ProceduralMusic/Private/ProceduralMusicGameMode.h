@@ -39,7 +39,7 @@ private:
 
 public:
 	UPROPERTY(EditAnywhere)
-	int32 m_Seed { 0 };
+	int32 m_Seed { 62879 };
 	
 	UPROPERTY(EditAnywhere)
 	FMusicGenerationSpecs m_MusicGenSpecs
