@@ -550,7 +550,6 @@ TArray<FMusicNote> UDrumAndBassGenerator::CheckGeneration(int32 a_NoteAmount, TA
             {
                 GroupStarts.Add(i);
             }
-            
         }
         
         int32 ShortestGroupStart = GroupStarts[0];
@@ -567,7 +566,6 @@ TArray<FMusicNote> UDrumAndBassGenerator::CheckGeneration(int32 a_NoteAmount, TA
                 ShortestGroupStart = Start;
                 ShortestGroupLength = Length;
             }
-            
         }
         
         int32 GroupStart = ShortestGroupStart;
@@ -580,7 +578,6 @@ TArray<FMusicNote> UDrumAndBassGenerator::CheckGeneration(int32 a_NoteAmount, TA
             {
                 FinalNotes[i] = PreviousNote;
             }
-            
         }
         else if (GroupEnd < FinalNotes.Num())
         {
@@ -589,7 +586,6 @@ TArray<FMusicNote> UDrumAndBassGenerator::CheckGeneration(int32 a_NoteAmount, TA
             {
                 FinalNotes[i] = NextNote;
             }
-            
         }
     }
     return FinalNotes;
@@ -620,10 +616,52 @@ void UDrumAndBassGenerator::GenerateChords(const FRandomStream &a_Seed, const FM
     TArray<TArray<FMusicNote>> ChordArray;
     ChordArray.SetNum(m_Pattern.BassNotes.Num());
 
-    for (size_t i = 0; i < m_Pattern.BassNotes.Num(); i++)
+    TArray<int32> GroupStarts;
+    GroupStarts.Add(0);
+
+    for (size_t i = 1; i < m_Pattern.BassNotes.Num(); i++)
     {
-        ChordArray[i] = GenerateChordNotes(m_Pattern.BassNotes[i].MidiNote, 60.f, a_Seed, a_Specs, "Major");
+        if (m_Pattern.BassNotes[i].MidiNote != m_Pattern.BassNotes[i - 1].MidiNote)
+        {
+            GroupStarts.Add(i);
+        }
     }
+
+    TArray<int32> GroupLengths;
+
+    for (int32 GroupStart : GroupStarts)
+    {
+        for (size_t i = ( GroupStart + 1); i < m_Pattern.BassNotes.Num(); i++)
+        {
+            if (m_Pattern.BassNotes[i].MidiNote != m_Pattern.BassNotes[i - 1].MidiNote)
+            {
+                GroupLengths.Add(i - GroupStart);
+                break;
+            }
+            else if (i == m_Pattern.BassNotes.Num() - 1)
+            {
+                GroupLengths.Add(m_Pattern.BassNotes.Num() - GroupStart);
+                break;
+            }
+            
+        }
+    }
+    
+    for (int32 i = 0; i < GroupStarts.Num(); i++)
+    {
+        TArray<FMusicNote> GeneratedChord = GenerateChordNotes(m_Pattern.BassNotes[GroupStarts[i]].MidiNote, 60.f, a_Seed, a_Specs, "Major");
+
+        for (size_t j = 0; j < GroupLengths[i]; j++)
+        {
+            ChordArray[GroupStarts[i] + j] = GeneratedChord;
+        }
+    }
+    
+
+    // for (size_t i = 0; i < m_Pattern.BassNotes.Num(); i++)
+    // {
+    //     ChordArray[i] = GenerateChordNotes(m_Pattern.BassNotes[i].MidiNote, 60.f, a_Seed, a_Specs, "Major");
+    // }
     m_Pattern.Chords = TranscodeChords(ChordArray);
 }
 
@@ -670,28 +708,38 @@ TArray<FMusicNote> UDrumAndBassGenerator::GenerateChordNotes(float a_BassNote, f
             float ThirdWeight ( 0.f );
             
             float ThirdProbability ( 0.9f );
-            float Sus2Probability ( 0.05f );
-            float Sus4Probability ( 0.05f );
+            float Sus2Probability  ( 0.05f );
+            float Sus4Probability  ( 0.05f );
 
             ThirdWeight += ThirdProbability;
 
             if (RandomWeight <= ThirdWeight)
             {
                 ChordNotes[i] = 4.f;
+
+                UE_LOG(LogTemp, Display, TEXT("Generated Third!"));
             }
-            
-            ThirdWeight += Sus2Probability;
-            
-            if (RandomWeight <= ThirdWeight)
+            else
             {
-                ChordNotes[i] = 2.f;
-            }
-            
-            ThirdWeight += Sus4Probability;
-            
-            if (RandomWeight <= ThirdWeight)
-            {
-                ChordNotes[i] = 5.f;
+                ThirdWeight += Sus2Probability;
+                
+                if (RandomWeight <= ThirdWeight)
+                {
+                    ChordNotes[i] = 2.f;
+    
+                    UE_LOG(LogTemp, Display, TEXT("Generated Sus2!"));
+                }
+                else
+                {
+                    ThirdWeight += Sus4Probability;
+                    
+                    if (RandomWeight <= ThirdWeight)
+                    {
+                        ChordNotes[i] = 5.f;
+        
+                        UE_LOG(LogTemp, Display, TEXT("Generated Sus4!"));
+                    }
+                }
             }
         }
         else if (i == 2)
