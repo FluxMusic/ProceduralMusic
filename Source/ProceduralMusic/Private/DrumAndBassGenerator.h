@@ -183,9 +183,13 @@ private:
 	 */
 
 	 void GenerateMelody(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
+	 int32 GenerateMelodyNoteAmount(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	 ENoteOption GenerateMelodyProbabilities(const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	 ENoteOption GenerateMarkovMelodyProbabilities(ENoteOption a_PreviousOption, const FRandomStream& a_Seed, const FMusicGenerationSpecs& a_Specs);
 	 FMusicNote GenerateMelodyMidiNote(float a_PreviousNote, const FRandomStream& a_Seed, float a_RootNote, FName a_Scale);
+
+	 void SnapMelodyTimingToBass();
+	 void SnapMelodyToChords();
 
 private:
 	FRandomStream m_Seed;

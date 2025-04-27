@@ -89,6 +89,7 @@ FDrumAndBassPatterns UDrumAndBassGenerator::GenerateMusic(int a_Seed, FMusicGene
         UE_LOG(LogTemp, Warning, TEXT("Melody Note: %f, Melody Velocity: %f"), m_Pattern.MelodyNotes[i].MidiNote, m_Pattern.MelodyNotes[i].Velocity);
     }
 
+    SnapMelodyTimingToBass();
 
     return m_Pattern;
 }
@@ -273,6 +274,31 @@ void UDrumAndBassGenerator::GenerateBass(const FRandomStream &a_Seed, const FMus
             }
         }
     }
+
+
+    /**
+     * TEST
+     */
+
+    TArray<float> Possibilities { 1.f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f };
+
+    for (int32 i = 0; i < FinalPattern.Num(); i++)
+    {
+        float RandomChance = a_Seed.FRand();
+
+        if (RandomChance <= Possibilities[i])
+        {
+            FinalPattern[i] = ENoteOption::NewNote;
+        }
+        else
+        {
+            FinalPattern[i] = ENoteOption::Sustain;
+        }
+    }
+
+
+
+
 
     for (size_t i = 0; i < FinalPattern.Num(); i++)
     {
@@ -870,6 +896,10 @@ void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FM
         {0.f, 0.f}
     };
 
+    int32 MelodyNoteAmount = GenerateMelodyNoteAmount(a_Seed, a_Specs);
+
+    UE_LOG(LogTemp, Display, TEXT("MelodyNoteAmount: %i"), MelodyNoteAmount);
+
     float PreviousNote ( 0.f );
 
     TArray<ENoteOption> GenericPattern;
@@ -891,7 +921,7 @@ void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FM
         }
         else
         {
-            MarkovPattern[i] = GenerateMarkovMelodyProbabilities(ENoteOption::NewNote, a_Seed, a_Specs);
+            MarkovPattern[i] = ENoteOption::NewNote;
         }
     }
     
@@ -908,7 +938,7 @@ void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FM
         {
             if (FinalPattern.IsValidIndex(i - 1))
             {
-                FinalPattern[i] = GenerateMarkovBassNoteProbabilities(FinalPattern[i - 1], a_Seed, a_Specs);
+                FinalPattern[i] = GenerateMarkovMelodyProbabilities(FinalPattern[i - 1], a_Seed, a_Specs);
             }
             else
             {
@@ -942,8 +972,29 @@ void UDrumAndBassGenerator::GenerateMelody(const FRandomStream &a_Seed, const FM
             }
         }
     }
+
+    for (size_t i = 0; i < MelodyNotes.Num(); i++)
+    {
+        UE_LOG(LogTemp, Display, TEXT("MelodyNoteB4: %f, MelodyNoteVelocityB4: %f"), MelodyNotes[i].MidiNote, MelodyNotes[i].Velocity);
+    }
     
-    m_Pattern.MelodyNotes = MelodyNotes;
+    m_Pattern.MelodyNotes = CheckGeneration(MelodyNoteAmount, MelodyNotes, a_Specs);
+}
+
+int32 UDrumAndBassGenerator::GenerateMelodyNoteAmount(const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
+{
+    switch (a_Specs.Energy)
+    {
+    case MusicEnergy::Low:
+        return a_Seed.RandRange(4, 7);
+    case MusicEnergy::Medium:
+        return a_Seed.RandRange(5, 8);
+    case MusicEnergy::High:
+        return a_Seed.RandRange(6, 10);
+
+    default:
+        return 5;
+    }
 }
 
 ENoteOption UDrumAndBassGenerator::GenerateMelodyProbabilities(const FRandomStream &a_Seed, const FMusicGenerationSpecs &a_Specs)
@@ -1116,8 +1167,6 @@ FMusicNote UDrumAndBassGenerator::GenerateMelodyMidiNote(float a_PreviousNote, c
                     //      it should be tested if lowering by an octave is better
                     while (ScaleNotes.Find(MelodyNote) == INDEX_NONE)
                     {
-                        // MelodyNote -= 1.f;
-
                         if (MelodyNote > a_RootNote && MelodyNote <= ScaleNotes[ScaleNotes.Num() - 1])
                         {
                             MelodyNote -= 1.f;
@@ -1136,4 +1185,62 @@ FMusicNote UDrumAndBassGenerator::GenerateMelodyMidiNote(float a_PreviousNote, c
     //Shouldn't execute
     UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateMelodyMidiNote! Reached end of function!"));
     return FMusicNote( 0.f, 0.f );
+}
+
+void UDrumAndBassGenerator::SnapMelodyTimingToBass()
+{
+    TArray<int32> BassGroupStarts;
+    TArray<int32> MelodyGroupStarts;
+
+    BassGroupStarts.Add(0);
+    MelodyGroupStarts.Add(0);
+
+    for (size_t i = 1; i < m_Pattern.BassNotes.Num(); i++)
+    {
+        if (m_Pattern.BassNotes[i].MidiNote != m_Pattern.BassNotes[i - 1].MidiNote)
+        {
+            BassGroupStarts.Add(i);
+        }
+    }
+
+    for (size_t i = 1; i < m_Pattern.MelodyNotes.Num(); i++)
+    {
+        if (m_Pattern.MelodyNotes[i].MidiNote != m_Pattern.MelodyNotes[i - 1].MidiNote)
+        {
+            MelodyGroupStarts.Add(i);
+        }
+    }
+    
+    for (int32 GroupStart : MelodyGroupStarts)
+    {
+        if (BassGroupStarts.Find(GroupStart) != INDEX_NONE)
+        {
+            continue;
+        }
+        else
+        {
+            if (BassGroupStarts.Find(GroupStart - 1) != INDEX_NONE)
+            {
+                m_Pattern.MelodyNotes[GroupStart - 1] = m_Pattern.MelodyNotes[GroupStart];
+            }
+            else if (BassGroupStarts.Find(GroupStart + 1) != INDEX_NONE)
+            {
+                m_Pattern.MelodyNotes[GroupStart] = m_Pattern.MelodyNotes[GroupStart - 1];
+            }
+            else
+            {
+                continue;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < m_Pattern.MelodyNotes.Num(); i++)
+    {
+        UE_LOG(LogTemp, Display, TEXT("MelodyNoteSnapped: %f, MelodyNoteVelocitySnapped: %f"), m_Pattern.MelodyNotes[i].MidiNote, m_Pattern.MelodyNotes[i].Velocity);
+    }
+    
+}
+
+void UDrumAndBassGenerator::SnapMelodyToChords()
+{
 }
