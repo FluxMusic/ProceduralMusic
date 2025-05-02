@@ -43,11 +43,13 @@ TArray<FMusicNote> DnBBassGenerator::GenerateBass()
 
     TArray<float> Possibilities { 1.f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f };
 
+    int32 NoteGenerationCount = 0;
+
     for (int32 i = 0; i < BassRhythm.Num(); i++)
     {
         float RandomChance = Seed.FRand();
 
-        if (RandomChance <= Possibilities[i])
+        if (RandomChance <= Possibilities[i] || (BassNotes.Num() - i <= BassNoteAmount - NoteGenerationCount))
         {
             BassRhythm[i] = ENoteOption::NewNote;
         }

@@ -83,6 +83,49 @@ TArray<FMusicNote> DnBMelodyGenerator::GenerateMelody()
         }
     }
 
+
+
+    /**
+     * TEST
+     */
+    TArray<float> Possibilities
+    {
+        0.95f,
+        0.1f,
+        0.5f,
+        0.1f,
+        0.8f,
+        0.2f,
+        0.4f,
+        0.2f,
+        0.9f,
+        0.1f,
+        0.6f,
+        0.1f,
+        0.8f,
+        0.2f,
+        0.5f,
+        0.2f
+    };
+
+    int32 NoteGenerationCount = 0;
+
+    for (int32 i = 0; i < FinalPattern.Num(); i++)
+    {
+        float RandomChance = Seed.FRand();
+
+        if (RandomChance <= Possibilities[i] || (FinalPattern.Num() - i <= MelodyNoteAmount - NoteGenerationCount))
+        {
+            FinalPattern[i] = ENoteOption::NewNote;
+        }
+        else
+        {
+            FinalPattern[i] = ENoteOption::Sustain;
+        }
+    }
+
+
+
     for (size_t i = 0; i < FinalPattern.Num(); i++)
     {
         switch (FinalPattern[i])

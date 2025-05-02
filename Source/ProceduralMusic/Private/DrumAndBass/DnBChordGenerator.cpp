@@ -30,19 +30,21 @@ FChordArrays DnBChordGenerator::GenerateChords(TArray<FMusicNote> BassNotes)
 
     for (int32 GroupStart : GroupStarts)
     {
+        bool bFound = false;
+
         for (size_t i = ( GroupStart + 1); i < BassNotes.Num(); i++)
         {
             if (BassNotes[i].MidiNote != BassNotes[i - 1].MidiNote)
             {
                 GroupLengths.Add(i - GroupStart);
+                bFound = true;
                 break;
             }
-            else if (i == BassNotes.Num() - 1)
-            {
-                GroupLengths.Add(BassNotes.Num() - GroupStart);
-                break;
-            }
-            
+        }
+
+        if (!bFound)
+        {
+            GroupLengths.Add(BassNotes.Num() - GroupStart);
         }
     }
     
