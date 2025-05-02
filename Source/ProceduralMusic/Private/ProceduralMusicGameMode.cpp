@@ -3,12 +3,22 @@
 
 #include "ProceduralMusicGameMode.h"
 
-#include "DrumAndBassGenerator.h"
 #include "Components/AudioComponent.h"
 
 AProceduralMusicGameMode::AProceduralMusicGameMode()
 {
-    m_pDnBGenerator = NewObject<UDrumAndBassGenerator>(this, "DnB Generator");
+    // m_pDnBGenerator = NewObject<UDrumAndBassGenerator>(this, "DnB Generator");
+
+    Generator = NewObject<UDrumAndBassGenerator>(this, "DnB Generator");
+
+    Scales = ConstructorHelpers::FObjectFinder<UDataTable>(TEXT("/Script/Engine.DataTable'/Game/Blueprints/DT_MusicScales.DT_MusicScales'")).Object;
+
+    if (!Scales)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Scales Not Found!"));
+    }
+
+    Generator->Initialise(Seed, m_MusicGenSpecs);
 
     m_pMusic = CreateDefaultSubobject<UAudioComponent>("Music");
     m_pMusic->SetSound(ConstructorHelpers::FObjectFinder<USoundBase>(*META_SOUND_PATH).Object);
@@ -18,12 +28,19 @@ AProceduralMusicGameMode::AProceduralMusicGameMode()
 
 void AProceduralMusicGameMode::BeginPlay()
 {
-    FDrumAndBassPatterns Patterns = m_pDnBGenerator->GenerateMusic(m_Seed, m_MusicGenSpecs);
+    // FDrumAndBassPatterns Patterns = m_pDnBGenerator->GenerateMusic(m_Seed, m_MusicGenSpecs);
 
-    SetDrumPatterns(Patterns.KickPattern, Patterns.SnarePattern, Patterns.HHPattern, Patterns.Perc1Pattern, Patterns.Perc2Pattern);
-    SetBassPatterns(Patterns.BassNotes);
-    SetChordPatterns(Patterns.Chords);
-    SetMelodyPatterns(Patterns.MelodyNotes);
+    // SetDrumPatterns(Patterns.KickPattern, Patterns.SnarePattern, Patterns.HHPattern, Patterns.Perc1Pattern, Patterns.Perc2Pattern);
+    // SetBassPatterns(Patterns.BassNotes);
+    // SetChordPatterns(Patterns.Chords);
+    // SetMelodyPatterns(Patterns.MelodyNotes);
+
+    FDrumAndBassSegment Segment = Generator->GenerateMusic();
+
+    SetDrumPatterns(Segment.Drums.KickPattern, Segment.Drums.SnarePattern, Segment.Drums.CymbalPattern, Segment.Drums.Perc1Pattern, Segment.Drums.Perc2Pattern);
+    SetBassPatterns(Segment.Bass);
+    SetChordPatterns(Segment.Chords);
+    SetMelodyPatterns(Segment.Melody);
     
     PlayMusic();
 }

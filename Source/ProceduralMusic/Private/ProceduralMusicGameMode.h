@@ -2,10 +2,12 @@
 
 #pragma once
 
-#include "MusicGenerationSpecs.h"
-
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+
+#include "MusicGenerationSpecs.h"
+#include "DrumAndBass/DrumAndBassGenerator.h"
+
 #include "ProceduralMusicGameMode.generated.h"
 
 class UDrumAndBassGenerator;
@@ -53,11 +55,18 @@ public:
 	};
 private:
 
-	UPROPERTY(VisibleAnywhere, DisplayName = "Drum And Bass Generator", Category = "Music Generation")
-	TObjectPtr<UDrumAndBassGenerator> m_pDnBGenerator = nullptr;
+	// UPROPERTY(VisibleAnywhere, DisplayName = "Drum And Bass Generator", Category = "Music Generation")
+	// TObjectPtr<UDrumAndBassGenerator> m_pDnBGenerator = nullptr;
+
+	FRandomStream Seed { m_Seed };
+
+	TObjectPtr<UDrumAndBassGenerator> Generator = nullptr;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Music", Category = "Playback")
 	TObjectPtr<UAudioComponent> m_pMusic = nullptr;
+
+	UPROPERTY(VisibleAnywhere)
+    UDataTable* Scales { nullptr };
 
 private:
 	const FString META_SOUND_PATH = "/Script/MetasoundEngine.MetaSoundSource'/Game/Audio/MetaSounds/META_DrumAndBass.META_DrumAndBass'";
