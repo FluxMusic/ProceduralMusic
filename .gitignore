@@ -1,5 +1,6 @@
 # Visual Studio 2015 user specific files
 .vs/
+.ignore
 
 # Mac Folder Files
 .DS_Store
@@ -46,6 +47,7 @@
 *.code-workspace
 *.VC.db
 *.VC.opendb
+*Makefile
 
 # Precompiled Assets
 SourceArt/**/*.png
