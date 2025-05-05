@@ -4,6 +4,7 @@
 
 #include "MusicGenerationSpecs.h"
 #include "MusicGenerationCoreTypes.h"
+#include "DrumAndBassSegmentGenerator.h"
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
@@ -12,6 +13,7 @@
 /**
  * Forward Declarations
  */
+class DrumAndBassSegmentGenerator;
 
 struct FRandomStream;
 struct FDrumAndBassSegment;
@@ -37,6 +39,13 @@ public:
 	FDrumAndBassSegment GenerateMusic();
 
 private:
+	void PreGenerate();
+
+	FDrumAndBassSegment TranscodeSegments(TArray<FDrumAndBassSegment> SegmentsIn);
+
+private:
+	TArray<DrumAndBassSegmentGenerator> Segments;
+
 	UPROPERTY(VisibleAnywhere)
     UDataTable* Scales { nullptr };
 

@@ -44,6 +44,9 @@ public:
     bool bGenerateBridge { false };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 MusicSegmentAmount { 4 };
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     Genre Genre { Genre::DrumAndBass };
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     MusicSpeed Speed { MusicSpeed::Medium };

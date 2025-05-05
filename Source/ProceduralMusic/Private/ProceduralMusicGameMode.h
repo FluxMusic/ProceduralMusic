@@ -49,6 +49,7 @@ public:
 		false,
 		false,
 		false,
+		4,
 		Genre::DrumAndBass,
 		MusicSpeed::Slow,
 		MusicEnergy::Low
