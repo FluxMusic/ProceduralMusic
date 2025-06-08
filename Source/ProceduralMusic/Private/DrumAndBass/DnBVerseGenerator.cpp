@@ -15,7 +15,7 @@ FDrumAndBassSegment DnBVerseGenerator::GenerateSegment()
     Segment.Chords = ChordGenerator.GenerateChords(Segment.Bass);
     Segment.Melody = MelodyGenerator.GenerateMelody();
 
-    LengthenSegment();
+    // LengthenSegment();
 
     SnapMelodyTimingToBass();
 
@@ -78,7 +78,7 @@ void DnBVerseGenerator::LengthenSegment()
     //Probably very expensive
     FDrumAndBassSegment SegmentCopy = Segment;
     
-    //Bass is easiest to access, doesn't matter which pattern to loog through though
+    //Bass is easiest to access, doesn't matter which pattern to loop through though
     int32 SegmentLength = SegmentCopy.Bass.Num();
 
     //Copy the previous Notes

@@ -12,85 +12,114 @@ DnBBassGenerator::DnBBassGenerator(FRandomStream &SeedIn, const FMusicGeneration
 
 TArray<FMusicNote> DnBBassGenerator::GenerateBass()
 {
-    TArray<FMusicNote> BassNotes
-    {
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f}
-    };
+    TArray<FMusicNote> BassNotes;
+    BassNotes.Empty();
 
-    int32 BassNoteAmount = GenerateBassNoteAmount();
+    PreGenerate();
 
     UE_LOG(LogTemp, Display, TEXT("BassNoteAmount: %i"), BassNoteAmount);
 
-    float PreviousNote ( 0.f );
-    
-    TArray<ENoteOption> BassRhythm;
-    BassRhythm.SetNum(BassNotes.Num());
+    TArray<FMusicNote> BassPattern = GenerateNotes(GenerateRhythm());
 
-    TArray<float> Possibilities { 1.f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f, 0.8f, 0.f, 0.2f, 0.f };
-
-    int32 NoteGenerationCount = 0;
-
-    for (int32 i = 0; i < BassRhythm.Num(); i++)
-    {
-        float RandomChance = Seed.FRand();
-
-        if (RandomChance <= Possibilities[i] || (BassNotes.Num() - i <= BassNoteAmount - NoteGenerationCount))
-        {
-            BassRhythm[i] = ENoteOption::NewNote;
-        }
-        else
-        {
-            BassRhythm[i] = ENoteOption::Sustain;
-        }
-    }
-
-    for (size_t i = 0; i < BassRhythm.Num(); i++)
-    {
-        switch (BassRhythm[i])
-        {
-            case ENoteOption::NewNote:
-            {
-                FMusicNote NewNote = GenerateBassMidiNote(PreviousNote, 60.f, "Major");
-                PreviousNote = NewNote.MidiNote;
-                BassNotes[i] = NewNote;
-                break;
-            }
-            case ENoteOption::Sustain:
-            {
-                if (i <= 0)
-                {
-                    BassNotes[i] = BassNotes[BassNotes.Num() - 1];
-                }
-                else
-                {
-                    BassNotes[i] = BassNotes[i - 1];
-                }
-                break;
-            }
-        }
-    }
+    //Should I care for making this a loop? Probably.
+    //Do I? Absolutely not.
+    BassNotes.Append(BassPattern);
+    BassNotes.Append(BassPattern);
+    BassNotes.Append(BassPattern);
+    BassNotes.Append(BassPattern);
     
     for (size_t i = 0; i < BassNotes.Num(); i++)
     {
         UE_LOG(LogTemp, Display, TEXT("BassNoteB4: %f, BassNoteVelocityB4: %f"), BassNotes[i].MidiNote, BassNotes[i].Velocity);
     }
     
-    return CheckGeneration(BassNoteAmount, BassNotes);
+    // return CheckGeneration(BassNoteAmount, BassNotes);
+    return BassNotes;
+}
+
+void DnBBassGenerator::PreGenerate()
+{
+    BassNoteAmount = GenerateBassNoteAmount();
+}
+
+TArray<ENoteLength> DnBBassGenerator::GenerateRhythm()
+{
+    TArray<ENoteLength> Array;
+    //Just to be extra safe.
+    Array.Empty();
+
+    int32 NotesGenerated = 0;
+
+    TArray<TPair<float, ENoteLength>> NoteLengthArray = NoteLengthMap.Array();
+
+    while (NotesGenerated < BassNoteAmount)
+    {
+        float Weight = 0.f;
+        float RandomWeight = Seed.FRand();
+
+        for (int32 i = 0; i < NoteLengthMap.Num(); i++)
+        {
+            Weight += NoteLengthArray[i].Key;
+
+            if (RandomWeight <= Weight)
+            {
+                //Check if note fits
+                if (static_cast<uint8>(NoteLengthArray[i].Value) > (64 - CheckNoteRhythm(Array)))
+                {
+                    UE_LOG(LogTemp, Error, TEXT("Note does not fit"));
+                    break;
+                }
+                
+                //Check if remainder of notes can be generated
+                if (static_cast<uint8>(NoteLengthArray[i].Value) < (64 - CheckNoteRhythm(Array) - (BassNoteAmount - NotesGenerated)))
+                {
+                    Array.Add(NoteLengthArray[i].Value);
+                    NotesGenerated++;
+
+                    UE_LOG(LogTemp, Warning, TEXT("Note: %i"), NoteLengthArray[i].Value);
+
+                    break;
+                }
+            }
+        }
+    }
+
+    return Array;
+}
+
+TArray<FMusicNote> DnBBassGenerator::GenerateNotes(TArray<ENoteLength> Rhythm)
+{
+    TArray<FMusicNote> Array;
+    //Just to be safe
+    Array.Empty();
+
+    float PreviousNote = 0.f;
+
+    for (int32 i = 0; i < Rhythm.Num(); i++)
+    {
+        
+        FMusicNote GeneratedNote = GenerateBassMidiNote(PreviousNote, 60.f, "Major");
+        UE_LOG(LogTemp, Error, TEXT("GeneratedNote: %f"), GeneratedNote.MidiNote);
+        PreviousNote = GeneratedNote.MidiNote;
+        if (i == Rhythm.Num() - 1)
+        {
+            int32 Remainder = 64 - Array.Num();
+            for (int32 j = 0; j < Remainder; j++)
+            {
+                Array.Add(GeneratedNote);
+            }
+        }
+        else
+        {
+            for (uint8 j = 0; j < static_cast<uint8>(Rhythm[i]); j++)
+            {
+                Array.Add(GeneratedNote);
+            }
+        }
+    }
+    UE_LOG(LogTemp, Warning, TEXT("ArraySize: %i"), Array.Num());
+
+    return Array;
 }
 
 int32 DnBBassGenerator::GenerateBassNoteAmount()
@@ -98,11 +127,11 @@ int32 DnBBassGenerator::GenerateBassNoteAmount()
     switch (Specs.Energy)
     {
     case MusicEnergy::Low:
-        return Seed.RandRange(4, 5);
+        return Seed.RandRange(3, 4);
     case MusicEnergy::Medium:
-        return Seed.RandRange(5, 6);
+        return Seed.RandRange(4, 5);
     case MusicEnergy::High:
-        return Seed.RandRange(5, 7);
+        return Seed.RandRange(5, 6);
 
     default:
         return 4;
@@ -114,6 +143,8 @@ FMusicNote DnBBassGenerator::GenerateBassMidiNote(float PreviousNote, float Root
     if (PreviousNote <= 0.f)
     {
         float RandomMidiNote = static_cast<float>(Seed.RandRange(60, 71));
+
+        UE_LOG(LogTemp, Warning, TEXT("RandomMidiNote: %f"), RandomMidiNote);
 
         if (!Scales) 
         {
@@ -131,6 +162,7 @@ FMusicNote DnBBassGenerator::GenerateBassMidiNote(float PreviousNote, float Root
 
         if (ScaleNotes.Find(RandomMidiNote) != INDEX_NONE)
         {
+            UE_LOG(LogTemp, Warning, TEXT("Wot"));
             return FMusicNote( RandomMidiNote, 127.f );
         }
         else
@@ -142,22 +174,24 @@ FMusicNote DnBBassGenerator::GenerateBassMidiNote(float PreviousNote, float Root
     {
         TMap<float, TArray<FMarkovChain>> MarkovProbabilities
         {
-            { 0.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.15f }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 1.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 2.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 3.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 4.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 5.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 6.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 7.f,  { { 0.f, 0.25f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.1f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 8.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 9.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 10.f, { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
-            { 11.f, { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } }
+            { 0.f,  { { 0.f, 0.15f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.15f }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 1.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 2.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 3.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 4.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 5.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 6.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 7.f,  { { 0.f, 0.25f }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.15f }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.1f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 8.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 9.f,  { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 10.f, { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } },
+            { 11.f, { { 0.f, 0.2f  }, { 1.f, 0.05f }, { 2.f, 0.1f }, { 3.f, 0.1f  }, { 4.f, 0.05f }, { 5.f, 0.1f  }, { 6.f, 0.05f }, { 7.f, 0.2f }, { 8.f, 0.05f }, { 9.f, 0.05f }, { 10.f, 0.05f }, { 11.f, 0.f } } }
         };
 
         float RandomWeight = Seed.FRand();
         float Weight ( 0.f );
+
+        UE_LOG(LogTemp, Warning, TEXT("this: %f"), PreviousNote - RootNote);
 
         TArray<FMarkovChain>* Probabilities = MarkovProbabilities.Find(PreviousNote - RootNote);
 
@@ -191,8 +225,6 @@ FMusicNote DnBBassGenerator::GenerateBassMidiNote(float PreviousNote, float Root
                 }
                 else
                 {
-                    //TODO: This clamps the note to the highest note in the scale,
-                    //      it should be tested if lowering by an octave is better
                     while (ScaleNotes.Find(BassNote) == INDEX_NONE)
                     {
                         // BassNote -= 1.f;
@@ -310,4 +342,21 @@ int32 DnBBassGenerator::CheckNoteAmount(TArray<FMusicNote> NoteArray)
     }
 
     return NoteAmount;
+}
+
+int32 DnBBassGenerator::CheckNoteRhythm(TArray<ENoteLength> NotesToCheck)
+{
+    if (NotesToCheck.Num() == 0)
+    {
+        return 0;
+    }
+    
+    int32 Result = 0;
+
+    for (int32 i = 0; i < NotesToCheck.Num(); i++)
+    {
+        Result += static_cast<int32>(NotesToCheck[i]);
+    }
+    
+    return Result;
 }

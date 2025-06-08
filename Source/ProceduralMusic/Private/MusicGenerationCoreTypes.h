@@ -12,6 +12,22 @@ enum class ENoteOption : uint8
 	Sustain UMETA(DisplayName="Sustain")
 };
 
+UENUM(BlueprintType)
+enum class ENoteLength : uint8
+{
+	None       = 0  UMETA(DisplayName="None"),
+	Sixteenth  = 1  UMETA(DisplayName="Sixteenth"),
+	Eighth     = 2  UMETA(DisplayName="Eighth"),
+	EighthDot  = 3  UMETA(DisplayName="DottedEighth"),
+	Quarter    = 4  UMETA(DisplayName="Quarter"),
+	QuarterDot = 6  UMETA(DisplayName="DottedQuarter"),
+	Half       = 8  UMETA(DisplayName="Half"),
+	HalfDot    = 8  UMETA(DisplayName="DottedHalf"),
+	Full       = 16 UMETA(DisplayName="Full"),      
+	FullDot    = 24 UMETA(DisplayName="DottedFull"),      
+	TwoFull    = 32 UMETA(DisplayName="TwoFull")      
+};
+
 USTRUCT(BlueprintType)
 struct FMusicScale : public FTableRowBase
 {
