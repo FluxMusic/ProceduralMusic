@@ -28,6 +28,16 @@ enum class ENoteLength : uint8
 	TwoFull    = 32 UMETA(DisplayName="TwoFull")      
 };
 
+UENUM(BlueprintType)
+enum class EMelodyPattern : uint8
+{
+	AA2A3B = 0 UMETA(DisplayName="a,a2,a3,b"),
+	AA2AA3 = 1 UMETA(DisplayName="a,a2,a,a3"),
+	AAAB   = 2 UMETA(DisplayName="a,a,a,b"),
+	AAAA2  = 3 UMETA(DisplayName="a,a,a,a2"),
+	AABC   = 4 UMETA(DisplayName="a,a,b,c")
+};
+
 USTRUCT(BlueprintType)
 struct FMusicScale : public FTableRowBase
 {

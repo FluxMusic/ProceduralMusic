@@ -36,17 +36,12 @@ private:
 private:
     int32 BassNoteAmount { 0 };
 
-    const TMap<float, ENoteLength> NoteLengthMap
+    const TMap<ENoteLength, float> NoteLengthMap
     {
-        { 0.05f, ENoteLength::Quarter },
-        { 0.2f,  ENoteLength::Half },
-        { 0.15f, ENoteLength::HalfDot },
-        { 0.5f,  ENoteLength::Full },
-        { 0.1f,  ENoteLength::FullDot },
+        { ENoteLength::Quarter, 0.05f },
+        { ENoteLength::Half,    0.2f  },
+        { ENoteLength::HalfDot, 0.15f },
+        { ENoteLength::Full,    0.5f  },
+        { ENoteLength::FullDot, 0.1f  },
     };
-
-    // const TArray<ENoteOption> Possibilities
-    // {
-
-    // };
 };

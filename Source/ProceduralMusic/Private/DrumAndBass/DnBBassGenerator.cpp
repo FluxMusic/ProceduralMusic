@@ -50,7 +50,7 @@ TArray<ENoteLength> DnBBassGenerator::GenerateRhythm()
 
     int32 NotesGenerated = 0;
 
-    TArray<TPair<float, ENoteLength>> NoteLengthArray = NoteLengthMap.Array();
+    TArray<TPair<ENoteLength, float>> NoteLengthArray = NoteLengthMap.Array();
 
     while (NotesGenerated < BassNoteAmount)
     {
@@ -59,24 +59,24 @@ TArray<ENoteLength> DnBBassGenerator::GenerateRhythm()
 
         for (int32 i = 0; i < NoteLengthMap.Num(); i++)
         {
-            Weight += NoteLengthArray[i].Key;
+            Weight += NoteLengthArray[i].Value;
 
             if (RandomWeight <= Weight)
             {
                 //Check if note fits
-                if (static_cast<uint8>(NoteLengthArray[i].Value) > (64 - CheckNoteRhythm(Array)))
+                if (static_cast<uint8>(NoteLengthArray[i].Key) > (64 - CheckNoteRhythm(Array)))
                 {
                     UE_LOG(LogTemp, Error, TEXT("Note does not fit"));
                     break;
                 }
                 
                 //Check if remainder of notes can be generated
-                if (static_cast<uint8>(NoteLengthArray[i].Value) < (64 - CheckNoteRhythm(Array) - (BassNoteAmount - NotesGenerated)))
+                if (static_cast<uint8>(NoteLengthArray[i].Key) < (64 - CheckNoteRhythm(Array) - (BassNoteAmount - NotesGenerated)))
                 {
-                    Array.Add(NoteLengthArray[i].Value);
+                    Array.Add(NoteLengthArray[i].Key);
                     NotesGenerated++;
 
-                    UE_LOG(LogTemp, Warning, TEXT("Note: %i"), NoteLengthArray[i].Value);
+                    UE_LOG(LogTemp, Warning, TEXT("Note: %i"), NoteLengthArray[i].Key);
 
                     break;
                 }

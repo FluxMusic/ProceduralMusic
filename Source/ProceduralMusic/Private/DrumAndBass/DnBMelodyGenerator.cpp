@@ -12,152 +12,88 @@ DnBMelodyGenerator::DnBMelodyGenerator(FRandomStream& SeedIn, const FMusicGenera
 
 TArray<FMusicNote> DnBMelodyGenerator::GenerateMelody()
 {
-    TArray<FMusicNote> MelodyNotes
-    {
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f},
-        {0.f, 0.f}
-    };
+    TArray<FMusicNote> MelodyNotes;
+    MelodyNotes.Empty();
 
-    int32 MelodyNoteAmount = GenerateMelodyNoteAmount();
+    PreGenerate();
 
     UE_LOG(LogTemp, Display, TEXT("MelodyNoteAmount: %i"), MelodyNoteAmount);
 
-    float PreviousNote ( 0.f );
+    TArray<ENoteLength> Rhythm1 = GenerateRhythm();
+    TArray<ENoteLength> Rhythm2 = Rhythm1;
+    TArray<ENoteLength> Rhythm3 = Rhythm1;
+    TArray<ENoteLength> Rhythm4 = Rhythm1;
 
-    TArray<ENoteOption> GenericPattern;
-    TArray<ENoteOption> MarkovPattern;
+    TArray<FMusicNote> Pattern1 = GenerateNotes(Rhythm1);
+    TArray<FMusicNote> Pattern2 = Pattern1;
+    TArray<FMusicNote> Pattern3 = Pattern1;
+    TArray<FMusicNote> Pattern4 = Pattern1;
 
-    GenericPattern.SetNum(MelodyNotes.Num());
-    MarkovPattern.SetNum (MelodyNotes.Num());
-
-    for (size_t i = 0; i < MelodyNotes.Num(); i++)
+    switch (MelodyPattern)
     {
-        GenericPattern[i] = GenerateMelodyProbabilities();
-    }
+        case EMelodyPattern::AA2A3B:
+        {
+            Rhythm4 = GenerateRhythm();
 
-    for (size_t i = 0; i < MelodyNotes.Num(); i++)
-    {
-        if (MelodyNotes.IsValidIndex(i - 1))
-        {
-            MarkovPattern[i] = GenerateMarkovMelodyProbabilities(MarkovPattern[i - 1]);
+            Pattern2 = GenerateNotes(Rhythm2);
+            Pattern3 = GenerateNotes(Rhythm3);
+            Pattern4 = GenerateNotes(Rhythm4);
+
+            break;
         }
-        else
+        case EMelodyPattern::AA2AA3:
         {
-            MarkovPattern[i] = ENoteOption::NewNote;
+            Pattern2 = GenerateNotes(Rhythm2);
+            Pattern4 = GenerateNotes(Rhythm4);
+
+            break;
         }
-    }
+        case EMelodyPattern::AAAB:
+        {
+            Rhythm4 = GenerateRhythm();
+
+            Pattern4 = GenerateNotes(Rhythm4);
+
+            break;
+        }
+        case EMelodyPattern::AAAA2:
+        {
+            Pattern4 = GenerateNotes(Rhythm4);
+
+            break;
+        }
+        case EMelodyPattern::AABC:
+        {
+            Rhythm3 = GenerateRhythm();
+            Rhythm4 = GenerateRhythm();
+
+            break;
+        }
+
     
-    TArray<ENoteOption> FinalPattern;
-    FinalPattern.SetNum(MarkovPattern.Num());
-
-    for (size_t i = 0; i < MarkovPattern.Num(); i++)
-    {
-        if (GenericPattern[i] == MarkovPattern[i])
+        default:
         {
-            FinalPattern[i] = MarkovPattern[i];
-        }
-        else
-        {
-            if (FinalPattern.IsValidIndex(i - 1))
-            {
-                FinalPattern[i] = GenerateMarkovMelodyProbabilities(FinalPattern[i - 1]);
-            }
-            else
-            {
-                FinalPattern[i] = ENoteOption::NewNote;
-            }
+            break;
         }
     }
 
-
-
-    /**
-     * TEST
-     */
-    TArray<float> Possibilities
-    {
-        0.95f,
-        0.1f,
-        0.5f,
-        0.1f,
-        0.8f,
-        0.2f,
-        0.4f,
-        0.2f,
-        0.9f,
-        0.1f,
-        0.6f,
-        0.1f,
-        0.8f,
-        0.2f,
-        0.5f,
-        0.2f
-    };
-
-    int32 NoteGenerationCount = 0;
-
-    for (int32 i = 0; i < FinalPattern.Num(); i++)
-    {
-        float RandomChance = Seed.FRand();
-
-        if (RandomChance <= Possibilities[i] || (FinalPattern.Num() - i <= MelodyNoteAmount - NoteGenerationCount))
-        {
-            FinalPattern[i] = ENoteOption::NewNote;
-        }
-        else
-        {
-            FinalPattern[i] = ENoteOption::Sustain;
-        }
-    }
-
-
-
-    for (size_t i = 0; i < FinalPattern.Num(); i++)
-    {
-        switch (FinalPattern[i])
-        {
-            case ENoteOption::NewNote:
-            {
-                FMusicNote NewNote = GenerateMelodyNote(PreviousNote, 60.f, "Major");
-                PreviousNote = NewNote.MidiNote;
-                MelodyNotes[i] = NewNote;
-                break;
-            }
-            case ENoteOption::Sustain:
-            {
-                if (i <= 0)
-                {
-                    MelodyNotes[i] = MelodyNotes[MelodyNotes.Num() - 1];
-                }
-                else
-                {
-                    MelodyNotes[i] = MelodyNotes[i - 1];
-                }
-                break;
-            }
-        }
-    }
+    MelodyNotes.Append(Pattern1);
+    MelodyNotes.Append(Pattern2);
+    MelodyNotes.Append(Pattern3);
+    MelodyNotes.Append(Pattern4);
 
     for (size_t i = 0; i < MelodyNotes.Num(); i++)
     {
         UE_LOG(LogTemp, Display, TEXT("MelodyNoteB4: %f, MelodyNoteVelocityB4: %f"), MelodyNotes[i].MidiNote, MelodyNotes[i].Velocity);
     }
     
-    return CheckGeneration(MelodyNoteAmount, MelodyNotes);
+    return MelodyNotes;
+}
+
+void DnBMelodyGenerator::PreGenerate()
+{
+    MelodyNoteAmount = GenerateMelodyNoteAmount();
+    MelodyPattern = GenerateMelodyPattern();
 }
 
 int32 DnBMelodyGenerator::GenerateMelodyNoteAmount()
@@ -165,15 +101,120 @@ int32 DnBMelodyGenerator::GenerateMelodyNoteAmount()
     switch (Specs.Energy)
     {
     case MusicEnergy::Low:
-        return Seed.RandRange(4, 7);
+        return Seed.RandRange(8, 14);
     case MusicEnergy::Medium:
-        return Seed.RandRange(5, 8);
+        return Seed.RandRange(10, 18);
     case MusicEnergy::High:
-        return Seed.RandRange(6, 10);
+        return Seed.RandRange(12, 20);
 
     default:
         return 5;
     }
+}
+
+EMelodyPattern DnBMelodyGenerator::GenerateMelodyPattern()
+{
+    float Weight = 0.f;
+    const float RandomWeight = Seed.FRand();
+
+    const TArray<TPair<EMelodyPattern, float>> MelodyPatternArray = MelodyPatternMap.Array();
+
+    for (int32 i = 0; i < MelodyPatternArray.Num(); i++)
+    {
+        Weight += MelodyPatternArray[i].Value;
+
+        if (RandomWeight <= Weight)
+        {
+            return MelodyPatternArray[i].Key;
+        }
+    }
+    
+    UE_LOG(LogTemp, Error, TEXT("DnBMelodyGenerator::GenerateMelodyPattern: Weights setup incorrectly!"));
+    return EMelodyPattern::AAAA2;
+}
+
+TArray<ENoteLength> DnBMelodyGenerator::GenerateRhythm()
+{
+    TArray<ENoteLength> Array;
+    //Just to be extra safe.
+    Array.Empty();
+
+    int32 NotesGenerated = 0;
+
+    TArray<TPair<ENoteLength, float>> NoteLengthArray = NoteLengthMap.Array();
+
+    while (NotesGenerated < MelodyNoteAmount)
+    {
+        float Weight = 0.f;
+        float RandomWeight = Seed.FRand();
+        
+
+        for (int32 i = 0; i < NoteLengthMap.Num(); i++)
+        {
+            Weight += NoteLengthArray[i].Value;
+
+            if (RandomWeight <= Weight)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Space: %i"), CheckNoteRhythm(Array));
+                UE_LOG(LogTemp, Warning, TEXT("Trying to fit: %i"), NoteLengthArray[i].Key);
+                UE_LOG(LogTemp, Warning, TEXT("Remainder: %i"), MelodyNoteAmount - NotesGenerated);
+
+                //Check if note fits
+                if (static_cast<uint8>(NoteLengthArray[i].Key) > (64 - CheckNoteRhythm(Array)))
+                {
+                    UE_LOG(LogTemp, Error, TEXT("Note does not fit"));
+                    break;
+                }
+                
+                //Check if remainder of notes can be generated
+                if (static_cast<uint8>(NoteLengthArray[i].Key) < (64 - CheckNoteRhythm(Array) - (MelodyNoteAmount - NotesGenerated)))
+                {
+                    Array.Add(NoteLengthArray[i].Key);
+                    NotesGenerated++;
+
+                    UE_LOG(LogTemp, Warning, TEXT("Note: %i"), NoteLengthArray[i].Key);
+
+                    break;
+                }
+            }
+        }
+    }
+
+    return Array;
+}
+
+TArray<FMusicNote> DnBMelodyGenerator::GenerateNotes(TArray<ENoteLength> Rhythm)
+{
+    TArray<FMusicNote> Array;
+    //Just to be safe
+    Array.Empty();
+
+    float PreviousNote = 0.f;
+
+    for (int32 i = 0; i < Rhythm.Num(); i++)
+    {
+        FMusicNote GeneratedNote = GenerateMelodyNote(PreviousNote, 60.f, "Major");
+        UE_LOG(LogTemp, Error, TEXT("GeneratedNote: %f"), GeneratedNote.MidiNote);
+        PreviousNote = GeneratedNote.MidiNote;
+        if (i == Rhythm.Num() - 1)
+        {
+            int32 Remainder = 64 - Array.Num();
+            for (int32 j = 0; j < Remainder; j++)
+            {
+                Array.Add(GeneratedNote);
+            }
+        }
+        else
+        {
+            for (uint8 j = 0; j < static_cast<uint8>(Rhythm[i]); j++)
+            {
+                Array.Add(GeneratedNote);
+            }
+        }
+    }
+    UE_LOG(LogTemp, Warning, TEXT("ArraySize: %i"), Array.Num());
+
+    return Array;
 }
 
 ENoteOption DnBMelodyGenerator::GenerateMelodyProbabilities()
@@ -364,6 +405,23 @@ FMusicNote DnBMelodyGenerator::GenerateMelodyNote(float PreviousNote, float Root
     //Shouldn't execute
     UE_LOG(LogTemp, Error, TEXT("Error in DrumAndBassGenerator.cpp: GenerateMelodyMidiNote! Reached end of function!"));
     return FMusicNote( 0.f, 0.f );
+}
+
+int32 DnBMelodyGenerator::CheckNoteRhythm(TArray<ENoteLength> NotesToCheck)
+{
+    if (NotesToCheck.Num() == 0)
+    {
+        return 0;
+    }
+    
+    int32 Result = 0;
+
+    for (int32 i = 0; i < NotesToCheck.Num(); i++)
+    {
+        Result += static_cast<int32>(NotesToCheck[i]);
+    }
+    
+    return Result;
 }
 
 TArray<FMusicNote> DnBMelodyGenerator::CheckGeneration(int32 FinalNoteAmount, TArray<FMusicNote> NotesToCheck)
