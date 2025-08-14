@@ -108,9 +108,9 @@ TArray<FMusicNote> DnBChordGenerator::GenerateChordNotes(float BassNote, float R
         {
             float ThirdWeight ( 0.f );
             
-            float ThirdProbability ( 0.9f );
-            float Sus2Probability  ( 0.05f );
-            float Sus4Probability  ( 0.05f );
+            float ThirdProbability ( 1.f );
+            float Sus2Probability  ( 0.00f );
+            float Sus4Probability  ( 0.00f );
 
             ThirdWeight += ThirdProbability;
 

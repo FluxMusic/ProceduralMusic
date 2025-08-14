@@ -212,7 +212,7 @@ FMusicNote DnBBassGenerator::GenerateBassMidiNote(float PreviousNote, float Root
 
                 TArray<float> ScaleNotes = ScaleDegrees;
 
-                float BassNote = PreviousNote + Probability.ScaleDegree;
+                float BassNote = RootNote + Probability.ScaleDegree;
 
                 for (size_t i = 0; i < ScaleDegrees.Num(); i++)
                 {

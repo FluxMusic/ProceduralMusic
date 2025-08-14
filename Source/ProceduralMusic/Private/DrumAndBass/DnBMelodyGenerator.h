@@ -51,11 +51,11 @@ private:
     const TMap<ENoteLength, float> NoteLengthMap
     {
         { ENoteLength::Sixteenth,  0.05f },
-        { ENoteLength::Eighth,     0.2f  },
-        { ENoteLength::EighthDot,  0.15f },
-        { ENoteLength::Quarter,    0.3f  },
-        { ENoteLength::QuarterDot, 0.15f },
-        { ENoteLength::Half,       0.1f  },
-        { ENoteLength::HalfDot,    0.05f },
+        { ENoteLength::Eighth,     0.35f  },
+        { ENoteLength::EighthDot,  0.0f },
+        { ENoteLength::Quarter,    0.45f  },
+        { ENoteLength::QuarterDot, 0.0f },
+        { ENoteLength::Half,       0.15f  },
+        { ENoteLength::HalfDot,    0.00f },
     };
 };
